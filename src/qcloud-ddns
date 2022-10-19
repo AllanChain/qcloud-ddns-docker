@@ -1,0 +1,68 @@
+#!/bin/bash
+
+set -e
+
+# DDNS_RECORDS='@:A @:AAAA *:A *:AAAA sub:A'
+
+source "$(dirname "$0")/check.sh"
+
+
+IPV4_API=${IPV4_API:-https://api.ipify.org}
+IPV6_API=${IPV6_API:-https://api64.ipify.org}
+
+get-record-id () {
+  tccli dnspod DescribeRecordList --Domain "$DOMAIN" \
+    --filter "RecordList[?Name=='$1' && Type=='$2'].RecordId | [0]"
+}
+
+if [[ -n $HAS_IPV4 ]]; then
+  IPV4=$(curl -Ss "$IPV4_API")
+  if [[ -z $IPV4 ]]; then
+    echo "Got invalid IPv4: $IPV4"
+    exit 1
+  fi
+  old_ipv4=$(cat /tmp/.ip4 || echo)
+  if [ "$old_ipv4" == "$IPV4" ]; then 
+    IPV4_SAME=1
+  else
+    echo "IPv4 changed from $old_ipv4 to $IPV4, updating..."
+    echo "$IPV4" > /tmp/.ip4
+  fi
+fi
+if [[ -n $HAS_IPV6 ]]; then
+  IPV6=$(curl -Ss "$IPV6_API")
+  if [[ -z $IPV6 ]] || [[ ! $IPV6 =~ : ]]; then
+    echo "Got invalid IPv6: $IPV6"
+    exit 1
+  fi
+  old_ipv6=$(cat /tmp/.ip6 || echo)
+  if [ "$old_ipv6" == "$IPV6" ]; then 
+    IPV6_SAME=1
+  else
+    echo "IPv6 changed from $old_ipv6 to $IPV6, updating..."
+    echo "$IPV6" > /tmp/.ip6
+  fi
+fi
+
+for ddns_record in "${ddns_records[@]}"; do
+  record_name=${ddns_record%:*}
+  record_type=${ddns_record#*:}
+  if [[ $record_type == "A" ]]; then
+    [[ -n $IPV4_SAME ]] && continue
+    record_value=$IPV4
+  elif [[ $record_type == "AAAA" ]]; then
+    [[ -n $IPV6_SAME ]] && continue
+    record_value=$IPV6
+  fi
+  record_id=$(get-record-id "$record_name" "$record_type")
+  if [[ -z $record_id ]]; then
+    echo "Can't find $record_name with type '$record_type', creating a new one..."
+    tccli dnspod CreateRecord --Domain "$DOMAIN" --SubDomain "$record_name" \
+      --RecordType "$record_type" --RecordLine 默认 --Value "$record_value"
+  else
+    tccli dnspod ModifyRecord --Domain "$DOMAIN" --SubDomain "$record_name" \
+      --RecordType "$record_type" --RecordLine 默认 --RecordId "$record_id" \
+      --Value "$record_value"
+  fi
+  echo "Updated record $record_name ($record_type) with $record_value"
+done
