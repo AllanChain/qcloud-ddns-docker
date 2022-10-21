@@ -16,7 +16,7 @@ get-record-id () {
 }
 
 if [[ -n $HAS_IPV4 ]]; then
-  IPV4=$(curl -Ss "$IPV4_API")
+  IPV4=$(curl -Ss4 "$IPV4_API")
   if [[ -z $IPV4 ]]; then
     echo "Got invalid IPv4: $IPV4"
     exit 1
@@ -30,7 +30,7 @@ if [[ -n $HAS_IPV4 ]]; then
   fi
 fi
 if [[ -n $HAS_IPV6 ]]; then
-  IPV6=$(curl -Ss "$IPV6_API")
+  IPV6=$(curl -Ss6 "$IPV6_API")
   if [[ -z $IPV6 ]] || [[ ! $IPV6 =~ : ]]; then
     echo "Got invalid IPv6: $IPV6"
     exit 1
