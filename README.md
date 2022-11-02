@@ -37,3 +37,5 @@ services:
 | `TENCENTCLOUD_SECRET_ID`  | `AKID123456`       |                                                                                    |
 | `TENCENTCLOUD_SECRET_KEY` | `secret-key-stuff` |                                                                                    |
 | `TENCENTCLOUD_REGION`     | `ap-guangzhou`     |                                                                                    |
+| `IPV4_API`                |                    | Default `https://api.ipify.org`                                                  |
+| `IPV6_API`                |                    | Default `https://api64.ipify.org`                                                  |
